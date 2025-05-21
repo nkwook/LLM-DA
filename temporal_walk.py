@@ -4,13 +4,14 @@ import pandas as pd
 
 def initialize_temporal_walk(version_id, data, transition_distr):
     idx_map = {
-        'all':np.array(data.train_idx.tolist() + data.valid_idx.tolist()+data.test_idx.tolist()),
-        'train_valid': np.array(data.train_idx.tolist() + data.valid_idx.tolist()),
-        'train': np.array(data.train_idx.tolist()),
-        'test': np.array(data.test_idx.tolist()),
-        'valid': np.array(data.valid_idx.tolist())
+        "all": np.array(data.train_idx.tolist() + data.valid_idx.tolist() + data.test_idx.tolist()),
+        "train_valid": np.array(data.train_idx.tolist() + data.valid_idx.tolist()),
+        "train": np.array(data.train_idx.tolist()),
+        "test": np.array(data.test_idx.tolist()),
+        "valid": np.array(data.valid_idx.tolist()),
     }
     return Temporal_Walk(idx_map[version_id], data.inv_relation_id, transition_distr)
+
 
 class Temporal_Walk(object):
     def __init__(self, learn_data, inv_relation_id, transition_distr):
@@ -69,9 +70,7 @@ class Temporal_Walk(object):
             prob = np.exp(tss - cur_ts)
             try:
                 prob = prob / np.sum(prob)
-                next_edge = filtered_edges[
-                    np.random.choice(range(len(filtered_edges)), p=prob)
-                ]
+                next_edge = filtered_edges[np.random.choice(range(len(filtered_edges)), p=prob)]
             except ValueError:  # All timestamps are far away
                 next_edge = filtered_edges[np.random.choice(len(filtered_edges))]
 
@@ -175,9 +174,7 @@ class Temporal_Walk(object):
                     cur_node, cur_ts, prev_edge, start_node, step, L, target_cur_ts
                 )
             else:
-                next_edge = self.transition_step(
-                    cur_node, cur_ts, prev_edge, start_node, step, L
-                )
+                next_edge = self.transition_step(cur_node, cur_ts, prev_edge, start_node, step, L)
 
             if len(next_edge):
                 cur_node = next_edge[2]
@@ -205,10 +202,10 @@ def store_neighbors(quads):
     """
 
     # 将 quads 转换为 DataFrame
-    df = pd.DataFrame(quads, columns=['head', 'relation', 'target', 'timestamp'])
+    df = pd.DataFrame(quads, columns=["head", "relation", "target", "timestamp"])
 
     # 按 'node' 列分组，并将每组转换为数组
-    neighbors = {node: group.values for node, group in df.groupby('head')}
+    neighbors = {node: group.values for node, group in df.groupby("head")}
 
     return neighbors
 

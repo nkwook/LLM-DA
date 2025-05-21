@@ -4,6 +4,7 @@ from random import sample
 import networkx as nx
 from scipy import sparse
 
+
 def construct_nx(idx2rel, idx2ent, ent2idx, fact_rdf):
     G = nx.Graph()
     for rdf in fact_rdf:
@@ -12,6 +13,7 @@ def construct_nx(idx2rel, idx2ent, ent2idx, fact_rdf):
         h_idx, t_idx = ent2idx[h], ent2idx[t]
         G.add_edge(h_idx, t_idx, relation=r)
     return G
+
 
 def construct_fact_dict(fact_rdf):
     fact_dict = {}
@@ -39,6 +41,7 @@ def construct_rmat(idx2rel, idx2ent, ent2idx, fact_rdf):
         h_idx, t_idx = ent2idx[h], ent2idx[t]
         r2mat[r][h_idx, t_idx] = 1
     return r2mat
+
 
 class RuleDataset(object):
     def __init__(self, r2mat, rules, e_num, idx2rel, args):
@@ -74,9 +77,10 @@ class RuleDataset(object):
         path_count = [_[1] for _ in data]
         return head, path_count
 
+
 def parse_rdf(rdf):
     """
-        return: head, relation, tail
+    return: head, relation, tail
     """
     return rdf
     # rdf_tail, rdf_rel, rdf_head = rdf
@@ -109,7 +113,7 @@ class Dictionary(object):
 
 def load_entities(path):
     idx2ent, ent2idx = {}, {}
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
         for idx, line in enumerate(lines):
             e = line.strip()
@@ -121,22 +125,22 @@ def load_entities(path):
 class Dataset(object):
     def __init__(self, data_root, sparsity=1, inv=False):
         # Construct entity_list
-        entity_path = data_root + 'entities.txt'
+        entity_path = data_root + "entities.txt"
         self.idx2ent_, self.ent2idx_ = load_entities(entity_path)
         # Construct rdict which contains relation2idx & idx2relation2
-        relation_path = data_root + 'relations.txt'
+        relation_path = data_root + "relations.txt"
         self.rdict = Dictionary()
         self.load_relation_dict(relation_path)
         # head relation
         self.head_rdict = Dictionary()
         self.head_rdict = copy.deepcopy(self.rdict)
         # load (h, r, t) tuples
-        fact_path = data_root + 'facts.txt'
-        train_path = data_root + 'train.txt'
-        valid_path = data_root + 'valid.txt'
-        test_path = data_root + 'test.txt'
+        fact_path = data_root + "facts.txt"
+        train_path = data_root + "train.txt"
+        valid_path = data_root + "valid.txt"
+        test_path = data_root + "test.txt"
         if inv:
-            fact_path += '.inv'
+            fact_path += ".inv"
         self.rdf_data_ = self.load_data_(fact_path, train_path, valid_path, test_path, sparsity)
         self.fact_rdf_, self.train_rdf_, self.valid_rdf_, self.test_rdf_ = self.rdf_data_
         # inverse
@@ -152,10 +156,10 @@ class Dataset(object):
 
     def load_rdfs(self, path):
         rdf_list = []
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             lines = f.readlines()
             for line in lines:
-                tuples = line.strip().split('\t')
+                tuples = line.strip().split("\t")
                 rdf_list.append(tuples)
         return rdf_list
 
@@ -171,7 +175,7 @@ class Dataset(object):
         """
         Read relation.txt to relation dictionary
         """
-        with open(relation_path, encoding='utf-8') as f:
+        with open(relation_path, encoding="utf-8") as f:
             rel_list = f.readlines()
             for r in rel_list:
                 relation = r.strip()
@@ -315,7 +319,7 @@ def body2idx(body_list, head_rdict):
     """
     res = []
     for body in body_list:
-        body_path = body.split('|')
+        body_path = body.split("|")
         # indexs include body idx seq + notation + head idx
         indexs = []
         for rel in body_path:
@@ -342,8 +346,8 @@ def rule2idx(rule, head_rdict):
     """
     Input a rule (string) and idx it
     """
-    body, head = rule.split('-')
-    body_path = body.split('|')
+    body, head = rule.split("-")
+    body_path = body.split("|")
     # indexs include body idx seq + notation + head idx
     indexs = []
     for rel in body_path + [-1, head]:
@@ -360,6 +364,7 @@ def idx2rule(index, head_rdict):
 
 def enumerate_body(relation_num, body_len, rdict):
     import itertools
+
     all_body_idx = list(list(x) for x in itertools.product(range(relation_num), repeat=body_len))
     # transfer index to relation name
     idx2rel = rdict.idx2rel

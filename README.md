@@ -1,5 +1,4 @@
-
-# LDM-DA
+# LLM-DA
 Large Language Models-guided Dynamic Adaptation for Temporal Knowledge Graph Reasoning
 
 Official Implementation of "[Large Language Models-guided Dynamic Adaptation for Temporal Knowledge Graph Reasoning](https://arxiv.org/pdf/2405.14170)".
@@ -11,7 +10,16 @@ to predict future events.
 
 ## Requirements
 ```
-pip install -r requirements.txt
+# Install uv (if you haven't already)
+# See https://github.com/astral-sh/uv for installation instructions
+# Example: pip install uv
+
+# Create and activate a virtual environment (recommended)
+python -m venv .venv  # or uv venv
+source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+
+# Install dependencies using uv
+uv pip sync pyproject.toml
 ```
 Set your OpenAI API key in `.env` file
 
@@ -19,47 +27,48 @@ Set your OpenAI API key in `.env` file
  
 1.  Temporal Logical Rules Sampling
 ```
-python rule_sampler.py -d ${DATASET} -m 3 -n 200 -p 16 -s 12 --is_relax_time No
+uv run rule_sampler.py -d ${DATASET} -m 3 -n 200 -p 16 -s 12 --is_relax_time No
+uv run rule_sampler.py -d icews14 -m 3 -n 200 -p 16 -s 12 --is_relax_time No
 ```
 2. Rule Generation & Dynamic Adaptation
 ```
-python Iteration_reasoning.py -d ${DATASET} --model_name gpt-3.5-turbo-0125 -f 50 -l 5 --is_rel_name Yes 
+uv run Iteration_reasoning.py -d ${DATASET} --model_name gpt-3.5-turbo-0125 -f 50 -l 5 --is_rel_name Yes 
 ```
 
 3. Rank Rules
 ```
-python rank_rule.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d ${DATASET} 
+uv run rank_rule.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d ${DATASET} 
 ```
 
 4.  Candidate Reasoning
 ```
-python reasoning.py -d ${DATASET} -r confidence.json -l 1 2 3 -p 8 --min_conf 0.01 --weight_0 0.5 --gpu 0 --top_k 20 --window 0
+uv run reasoning.py -d ${DATASET} -r confidence.json -l 1 2 3 -p 8 --min_conf 0.01 --weight_0 0.5 --gpu 0 --top_k 20 --window 0
 ```
 5. Evaluate
 ```
-python evaluate.py -d ${DATASET} -c 'llm_test_apply_all_conf_cands_r[1,2,3]_w0_score_12[0.1,0.5,'\''TLogic'\'',0.0,0.01,0]_top_20_et_origin.json' --graph_reasoning_type TiRGN --rule_weight 0.9
+uv run evaluate.py -d ${DATASET} -c 'llm_test_apply_all_conf_cands_r[1,2,3]_w0_score_12[0.1,0.5,'\''TLogic'\'',0.0,0.01,0]_top_20_et_origin.json' --graph_reasoning_type TiRGN --rule_weight 0.9
 ```
 
 ## Reproduce LLM-DA results with mined rules
 ###### ICEWS14
 ```
-python rule_sampler.py -d icews14 -m 3 -n 200 -p 16 -s 12 --is_relax_time No
+uv run rule_sampler.py -d icews14 -m 3 -n 200 -p 16 -s 12 --is_relax_time No
 ```
 
 ```
-python Iteration_reasoning.py -d icews14 --model_name gpt-3.5-turbo-0125 -f 50 -l 5 --is_rel_name Yes 
+uv run Iteration_reasoning.py -d icews14 --model_name gpt-4.1-nano -f 50 -l 5 --is_rel_name Yes 
 ```
 
 ```
-python rank_rule.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d icews14
+uv run rank_rule.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d icews14
 ```
 
 ```
-python reasoning.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d icews14 
+uv run reasoning.py -p copy_gpt-3.5-turbo-0125-top-0-f-10-l-10 -d icews14 
 ```
 
 ```
-python evaluate.py -d icews14  -c 'llm_test_apply_all_conf_cands_r[1,2,3]_w0_score_12[0.1,0.5,'\''TLogic'\'',0.0,0.01,0]_top_20_et_origin.json' --graph_reasoning_type TiRGN --rule_weight 0.9
+uv run evaluate.py -d icews14  -c 'llm_test_apply_all_conf_cands_r[1,2,3]_w0_score_12[0.1,0.5,'\''TLogic'\'',0.0,0.01,0]_top_20_et_origin.json' --graph_reasoning_type TiRGN --rule_weight 0.9
 ```
 
 ###### ICEWS05-15

@@ -1,0 +1,24 @@
+[project]
+name = "LLM-DA"
+version = "0.1.0"
+description = "Large Language Models-guided Dynamic Adaptation for Temporal Knowledge Graph Reasoning"
+readme = "README.md"
+requires-python = ">=3.9, <3.13"
+dependencies = [
+    "joblib>=1.5.0",
+    "matplotlib",
+    "networkx==3.2.1",
+    "numpy==1.26.3",
+    "openai==1.79.0",
+    "pandas==2.2.0",
+    "python-dotenv==1.0.0",
+    "scipy==1.12.0",
+    "seaborn==0.13.1",
+    "sentence-transformers>=3.0.1",
+    "tiktoken==0.9.0",
+    "torch==2.4.0",
+    "tqdm==4.66.1",
+    "transformers==4.35.2",
+    "datasets",
+]
+

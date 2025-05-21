@@ -13,6 +13,7 @@ import pandas as pd
 
 import rule_application as ra
 
+
 def print_msg(msg):
     msg = "## {} ##".format(msg)
     length = len(msg)
@@ -22,17 +23,17 @@ def print_msg(msg):
 
 def camel_to_normal(camel_string):
     # 使用正则表达式将驼峰字符串转换为正常字符串
-    normal_string = re.sub(r'(?<!^)(?=[A-Z])', ' ', camel_string).lower()
+    normal_string = re.sub(r"(?<!^)(?=[A-Z])", " ", camel_string).lower()
     return normal_string
 
 
 def clean_symbol_in_rel(rel):
-    '''
+    """
     clean symbol in relation
 
     Args:
         rel (str): relation name
-    '''
+    """
 
     rel = rel.strip("_")  # Remove heading
     # Replace inv_ with inverse
@@ -49,24 +50,24 @@ def clean_symbol_in_rel(rel):
     # UMLS
     elif "&" in rel:
         rel = rel.replace("&", " ")  # Replace & with space
-    # YAGO 
+    # YAGO
     else:
         rel = camel_to_normal(rel)
     return rel
 
 
 def query(message, llm_model):
-    '''
+    """
     Query ChatGPT API
     :param message:·
     :return:
-    '''
+    """
 
     return llm_model.generate_sentence(message)
 
 
 def unknown_check_prompt_length(prompt, condicate_list, return_rules, model):
-    '''Check whether the input prompt is too long. If it is too long, remove the first path and check again.'''
+    """Check whether the input prompt is too long. If it is too long, remove the first path and check again."""
     all_condicate = ";".join(condicate_list)
     return_rules = return_rules.format(candidate_rels=all_condicate)
     all_tokens = prompt + return_rules
@@ -85,9 +86,10 @@ def unknown_check_prompt_length(prompt, condicate_list, return_rules, model):
             if model.token_len(tmp_all_tokens) > maximun_token:
                 return ";".join(new_list_candcate)
             new_list_candcate.append(p)
+
 
 def iteration_check_prompt_length(prompt, condicate_list, return_rules, model):
-    '''Check whether the input prompt is too long. If it is too long, remove the first path and check again.'''
+    """Check whether the input prompt is too long. If it is too long, remove the first path and check again."""
     all_condicate = ";".join(condicate_list)
     return_rules = return_rules.format(candidate_rels=all_condicate)
     all_tokens = prompt + return_rules
@@ -107,8 +109,9 @@ def iteration_check_prompt_length(prompt, condicate_list, return_rules, model):
                 return ";".join(new_list_candcate)
             new_list_candcate.append(p)
 
+
 def check_prompt_length(prompt, list_of_paths, model):
-    '''Check whether the input prompt is too long. If it is too long, remove the first path and check again.'''
+    """Check whether the input prompt is too long. If it is too long, remove the first path and check again."""
     all_paths = "\n".join(list_of_paths)
     all_tokens = prompt + all_paths
     maximun_token = model.maximum_token
@@ -135,7 +138,7 @@ def num_tokens_from_message(path_string, model):
     except KeyError:
         print("Warning: model not found. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
-    if model in ["gpt-3.5-turbo", 'gpt-3.5-turbo-16k']:
+    if model in ["gpt-3.5-turbo", "gpt-3.5-turbo-16k"]:
         tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
     elif model == "gpt-4":
         tokens_per_message = 3
@@ -150,13 +153,13 @@ def num_tokens_from_message(path_string, model):
     return num_tokens
 
 
-def get_token_limit(model='gpt-4'):
+def get_token_limit(model="gpt-4"):
     """Returns the token limitation of provided model"""
-    if model in ['gpt-4', 'gpt-4-0613']:
+    if model in ["gpt-4", "gpt-4-0613"]:
         num_tokens_limit = 8192
-    elif model in ['gpt-3.5-turbo-16k', 'gpt-3.5-turbo-16k-0613']:
+    elif model in ["gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"]:
         num_tokens_limit = 16384
-    elif model in ['gpt-3.5-turbo', 'gpt-3.5-turbo-0613', 'text-davinci-003', 'text-davinci-002']:
+    elif model in ["gpt-3.5-turbo", "gpt-3.5-turbo-0613", "text-davinci-003", "text-davinci-002"]:
         num_tokens_limit = 4096
     else:
         raise NotImplementedError(f"""get_token_limit() is not implemented for model {model}.""")
@@ -173,9 +176,11 @@ def split_path_list(path_list, token_limit, model):
     current_token_count = 4
 
     for path in path_list:
-        path += '\n'
+        path += "\n"
         path_token_count = num_tokens_from_message(path, model) - 4
-        if current_token_count + path_token_count > token_limit:  # If the path makes the current list exceed the token limit
+        if (
+            current_token_count + path_token_count > token_limit
+        ):  # If the path makes the current list exceed the token limit
             output_list.append(current_list)
             current_list = [path]  # Start a new list.
             current_token_count = path_token_count + 4
@@ -195,13 +200,13 @@ def shuffle_split_path_list(path_content_list, prompt_len, model):
     """
     token_limitation, tokenizer = get_token_limit(model)  # Get input token limitation for current model
     token_limitation -= prompt_len + 4  # minus prompt length for path length
-    all_path_content = '\n'.join(path_content_list)
+    all_path_content = "\n".join(path_content_list)
     token_num_all_path = num_tokens_from_message(all_path_content, model)
     random.shuffle(path_content_list)
     if token_num_all_path > token_limitation:
         list_of_paths = split_path_list(path_content_list, token_limitation, model)
     else:
-        list_of_paths = [[path + '\n' for path in path_content_list]]
+        list_of_paths = [[path + "\n" for path in path_content_list]]
     return list_of_paths
 
 
@@ -283,7 +288,7 @@ def load_json_data(file_path, default=None):
     try:
         if os.path.exists(file_path):
             print(f"Use cache from: {file_path}")
-            with open(file_path, 'r') as file:
+            with open(file_path, "r") as file:
                 return json.load(file)
         else:
             print(f"File not found: {file_path}")
@@ -297,7 +302,7 @@ def load_json_data(file_path, default=None):
 def save_json_data(data, file_path):
     """将数据保存到JSON文件。"""
     try:
-        with open(file_path, 'w', encoding='utf-8') as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4, ensure_ascii=False)
         print(f"Data has been converted to JSON and saved to {file_path}")
     except Exception as e:
@@ -308,7 +313,8 @@ def write_to_file(content, path):
     with open(path, "w", encoding="utf-8") as fout:
         fout.write(content)
 
-def stat_ranks(rank_list, method='filter'):
+
+def stat_ranks(rank_list, method="filter"):
     hits = [1, 3, 10]
     total_rank = torch.cat(rank_list)
 
@@ -327,18 +333,21 @@ def construct_adjacency_list_and_index(triples, relation_id_list, num_entities):
     triples = np.array(triples)
     for i, relation_id in enumerate(relation_id_list):
         idx = np.argwhere(triples[:, 1] == relation_id)
-        adj_list.append(ssp.csc_matrix((np.ones(len(idx), dtype=np.uint8),
-                                        (triples[:, 0][idx].squeeze(1), triples[:, 2][idx].squeeze(1))),
-                                       shape=(num_entities, num_entities)))
+        adj_list.append(
+            ssp.csc_matrix(
+                (np.ones(len(idx), dtype=np.uint8), (triples[:, 0][idx].squeeze(1), triples[:, 2][idx].squeeze(1))),
+                shape=(num_entities, num_entities),
+            )
+        )
         relation_index[relation_id] = i
 
     return adj_list, relation_index
 
 
 def incidence_matrix(adj_list):
-    '''
+    """
     adj_list: List of sparse adjacency matrices
-    '''
+    """
 
     rows, cols, dats = [], [], []
     dim = adj_list[0].shape
@@ -467,6 +476,7 @@ def copy_folder_contents(source_folder, destination_folder):
 
     print(f"Contents of '{source_folder}' have been copied to '{destination_folder}'")
 
+
 def filter_candidates(test_query, candidates, test_data):
     """
     Filter out those candidates that are also answers to the test query
@@ -532,8 +542,9 @@ def calculate_rank(test_query_answer, candidates, num_entities, setting="best"):
 
     return rank
 
+
 def get_top_k_with_index(similarity_file_path, top_k):
-    with open(similarity_file_path, 'rb') as f:
+    with open(similarity_file_path, "rb") as f:
         loaded_arr = pickle.load(f)
     # 获取每一行的最大 top_k 个值的索引
     top_k_indices = np.argsort(loaded_arr, axis=1)[:, -top_k:][:, ::-1]
@@ -547,6 +558,7 @@ def get_top_k_with_index(similarity_file_path, top_k):
         result_dict[i] = {index: value for index, value in zip(top_k_indices[i], top_k_values[i])}
 
     return result_dict
+
 
 def get_candicates_by_timestamp(test_query, bkg, interval):
     timestamp_id = test_query[3]
@@ -578,15 +590,13 @@ def select_canicates_based_timestamp_normal(time_filtered, target_timestamp_id, 
     max_val = max(array)
 
     # 使用 Min-Max 归一化将数组归一化到 [a, b] 区间
-    normalized_array = [
-        a + (x - min_val) * (b - a) / (max_val - min_val) if max_val != min_val else a
-        for x in array
-    ]
+    normalized_array = [a + (x - min_val) * (b - a) / (max_val - min_val) if max_val != min_val else a for x in array]
 
     # 创建一个字典，将每个目标实体映射到其最大时间戳
     candidates = dict(zip(unique_targets, normalized_array))
 
     return candidates
+
 
 def select_canicates_based_timestamp(time_filtered, target_timestamp_id):
     # 按照第四列（时间戳）降序排列
@@ -651,7 +661,6 @@ def expand_candidates(candidates, data, interval, target_timestamp_id):
         if curr_timestamp_id < bkg_timestamp_id:
             temp_dict[bkg_target_id] = bkg_timestamp_id
 
-
     pro = 0.0
     for value in temp_dict.values():
         pro = pro + value
@@ -667,7 +676,7 @@ def expand_candidates(candidates, data, interval, target_timestamp_id):
     X_max = max(list(temp_temp_dict.values()))
 
     if X_max == X_min:
-        return  candidates
+        return candidates
 
     b = max(list(candidates.values()))
     a = min(list(candidates.values()))
@@ -675,11 +684,14 @@ def expand_candidates(candidates, data, interval, target_timestamp_id):
     temp_3_dict = {}
     for key, value in temp_temp_dict.items():
         # temp_3_dict[key] = (a + (b - a) * (value - X_min) / (X_max - X_min))
-        temp_3_dict[key] = 0.2*(a + (b - a) * (math.log(value) - math.log(X_min)) / (math.log(X_max) - math.log(X_min)))
+        temp_3_dict[key] = 0.2 * (
+            a + (b - a) * (math.log(value) - math.log(X_min)) / (math.log(X_max) - math.log(X_min))
+        )
 
     merged_dict = {**candidates, **temp_3_dict}
 
     return merged_dict
+
 
 def expand_candidates_auto(candidates, bkg, interval, test_query):
     is_exist = True
@@ -706,7 +718,9 @@ def expand_candidates_auto(candidates, bkg, interval, test_query):
     else:
         benchmark_rate = min(candidates[share] / candidates_with_max_timestamp[share] for share in share_candidates)
 
-    candidates_with_max_timestamp = {key: value * benchmark_rate for key, value in candidates_with_max_timestamp.items()}
+    candidates_with_max_timestamp = {
+        key: value * benchmark_rate for key, value in candidates_with_max_timestamp.items()
+    }
 
     merge_dict = {**candidates_with_max_timestamp, **candidates}
 
@@ -739,9 +753,9 @@ def expand_candidates_with_freq_weight(candidates, bkg, interval, test_query, fr
             min_score = min(list(candidates.values()))
             max_score = max(list(candidates.values()))
 
-        candidates_with_max_timestamp_id = select_canicates_based_timestamp_normal(subgraph, target_timestamp_id,
-                                                                                   min_score,
-                                                                                   max_score)
+        candidates_with_max_timestamp_id = select_canicates_based_timestamp_normal(
+            subgraph, target_timestamp_id, min_score, max_score
+        )
     else:
         if len(candidates) == 0:
             mask = bkg[:, 3] < target_timestamp_id
@@ -762,7 +776,6 @@ def expand_candidates_with_freq_weight(candidates, bkg, interval, test_query, fr
     }
 
     return merge_dict, True
-
 
 
 def expand_candidates_auto_with_freq_weight(candidates, bkg, interval, test_query, freq_weight):
@@ -786,21 +799,21 @@ def expand_candidates_auto_with_freq_weight(candidates, bkg, interval, test_quer
     share_candidates = exist_candidates_set.intersection(added_candidates_set)
     if not share_candidates:
         benchmark_rate = 1.0
-        candidates_with_max_timestamp = {key: value * benchmark_rate for key, value in
-                                         candidates_with_max_timestamp.items()}
+        candidates_with_max_timestamp = {
+            key: value * benchmark_rate for key, value in candidates_with_max_timestamp.items()
+        }
         merge_dict = candidates_with_max_timestamp
     else:
-
 
         merge_dict = {**candidates_with_max_timestamp, **candidates}
         for cand_id in share_candidates:
             # merge_dict[cand_id] = (1 - freq_weight) * candidates[cand_id] + freq_weight * candidates_with_max_timestamp[
             #     cand_id]
 
-            merge_dict[cand_id] = candidates[cand_id] + candidates_with_max_timestamp[
-                cand_id]
+            merge_dict[cand_id] = candidates[cand_id] + candidates_with_max_timestamp[cand_id]
 
     return merge_dict, is_exist
+
 
 def expand_candidates_with_source(candidates, bkg, interval, test_query, freq_weight):
     exist_in_neighbors = True
@@ -822,10 +835,12 @@ def expand_candidates_with_source(candidates, bkg, interval, test_query, freq_we
     # 进行源实体的匹配
     target_mask = time_filtered[:, 0] == source_id
     source_mask = time_filtered[:, 2] == source_id
-    candicates_target_with_timestamp = time_filtered[target_mask][:, [2,3]]
-    candicates_source_with_timestamp = time_filtered[source_mask][:, [0,3]]
+    candicates_target_with_timestamp = time_filtered[target_mask][:, [2, 3]]
+    candicates_source_with_timestamp = time_filtered[source_mask][:, [0, 3]]
     # 合并候选实体数组
-    candicates_with_neighbor = np.hstack((candicates_target_with_timestamp[:,0], candicates_source_with_timestamp[:,0]))
+    candicates_with_neighbor = np.hstack(
+        (candicates_target_with_timestamp[:, 0], candicates_source_with_timestamp[:, 0])
+    )
     if len(candicates_with_neighbor) == 0:
         result_dict = select_canicates_based_timestamp(time_filtered, timestamp_id)
         is_has_neighbors = False
@@ -835,22 +850,21 @@ def expand_candidates_with_source(candidates, bkg, interval, test_query, freq_we
         if target_id not in unique_neighbors:
             exist_in_neighbors = False
 
-
         exist_candidates_set = set(list(candidates.keys()))
         added_candidates_set = set(unique_neighbors.tolist())
 
         share_candidates = exist_candidates_set.intersection(added_candidates_set)
 
         # 创建一个包含初始数据的DataFrame
-        data = np.vstack((candicates_target_with_timestamp,candicates_source_with_timestamp))
-        df = pd.DataFrame(data, columns=['neighbor', 'timestamp'])
+        data = np.vstack((candicates_target_with_timestamp, candicates_source_with_timestamp))
+        df = pd.DataFrame(data, columns=["neighbor", "timestamp"])
 
         # 计算最大值10000 - 第二列的数值 的倒数
-        df['timestamp'] = freq_weight * (1 / (timestamp_id - df['timestamp']))
+        df["timestamp"] = freq_weight * (1 / (timestamp_id - df["timestamp"]))
 
         # 使用groupby根据第一列进行分组，并找到每个分组中第二列的最大值
-        result = df.loc[df.groupby('neighbor')['timestamp'].idxmax()].reset_index(drop=True)
-        result_dict = result.set_index('neighbor')['timestamp'].to_dict()
+        result = df.loc[df.groupby("neighbor")["timestamp"].idxmax()].reset_index(drop=True)
+        result_dict = result.set_index("neighbor")["timestamp"].to_dict()
 
         # if len(share_candidates) == 0:
         #     benchmark_rate = 1.0
@@ -860,12 +874,12 @@ def expand_candidates_with_source(candidates, bkg, interval, test_query, freq_we
         #
         # result_dict = {key: value * benchmark_rate for key, value in result_dict.items()}
 
-
     # merge_dict = {k: freq_weight * result_dict.get(k, 0) + candidates.get(k, 0) for k in set(result_dict) | set(candidates)}
     merge_dict = {**result_dict, **candidates}
     # merge_dict = {**result_dict}
 
     return merge_dict, is_exist, is_has_neighbors, exist_in_neighbors
+
 
 def expand_candidates_with_relation(candidates, bkg, interval, test_query, freq_weight):
     exist_in_neighbors = True
@@ -888,10 +902,12 @@ def expand_candidates_with_relation(candidates, bkg, interval, test_query, freq_
     # 进行源实体的匹配
     target_mask = time_filtered[:, 1] == relation_id
     source_mask = time_filtered[:, 1] == relation_id
-    candicates_target_with_timestamp = time_filtered[target_mask][:, [2,3]]
-    candicates_source_with_timestamp = time_filtered[source_mask][:, [0,3]]
+    candicates_target_with_timestamp = time_filtered[target_mask][:, [2, 3]]
+    candicates_source_with_timestamp = time_filtered[source_mask][:, [0, 3]]
     # 合并候选实体数组
-    candicates_with_neighbor = np.hstack((candicates_target_with_timestamp[:,0], candicates_source_with_timestamp[:,0]))
+    candicates_with_neighbor = np.hstack(
+        (candicates_target_with_timestamp[:, 0], candicates_source_with_timestamp[:, 0])
+    )
     if len(candicates_with_neighbor) == 0:
         result_dict = select_canicates_based_timestamp(time_filtered, timestamp_id)
         is_has_neighbors = False
@@ -902,22 +918,22 @@ def expand_candidates_with_relation(candidates, bkg, interval, test_query, freq_
             exist_in_neighbors = False
 
         # 创建一个包含初始数据的DataFrame
-        data = np.vstack((candicates_target_with_timestamp,candicates_source_with_timestamp))
-        df = pd.DataFrame(data, columns=['neighbor', 'timestamp'])
+        data = np.vstack((candicates_target_with_timestamp, candicates_source_with_timestamp))
+        df = pd.DataFrame(data, columns=["neighbor", "timestamp"])
 
         # 计算最大值10000 - 第二列的数值 的倒数
-        df['timestamp'] = freq_weight * (1 / (timestamp_id - df['timestamp']))
+        df["timestamp"] = freq_weight * (1 / (timestamp_id - df["timestamp"]))
 
         # 使用groupby根据第一列进行分组，并找到每个分组中第二列的最大值
-        result = df.loc[df.groupby('neighbor')['timestamp'].idxmax()].reset_index(drop=True)
-        result_dict = result.set_index('neighbor')['timestamp'].to_dict()
-
+        result = df.loc[df.groupby("neighbor")["timestamp"].idxmax()].reset_index(drop=True)
+        result_dict = result.set_index("neighbor")["timestamp"].to_dict()
 
     # merge_dict = {k: freq_weight * result_dict.get(k, 0) + candidates.get(k, 0) for k in set(result_dict) | set(candidates)}
     merge_dict = {**result_dict, **candidates}
     # merge_dict = {**result_dict}
 
     return merge_dict, is_exist, is_has_neighbors, exist_in_neighbors
+
 
 def remove_candidates(candidates, data, interval, target_timestamp_id):
     min_timestamp_id = target_timestamp_id - interval
@@ -937,10 +953,10 @@ def remove_candidates(candidates, data, interval, target_timestamp_id):
 
     return temp_dict
 
+
 def data_analysis(test_query, analysis_bkg_all):
     # Source Entity Existence Analysis
     source_id = test_query[0]
-    
 
     # Use boolean indexing for a quick check without creating a new array
     source_exists_in_bkg = np.any(analysis_bkg_all[:, 0] == source_id)
@@ -952,15 +968,15 @@ def data_analysis(test_query, analysis_bkg_all):
 
     return 0
 
+
 def get_win_subgraph(test_data, data, learn_edges, window, win_start=0):
-    unique_timestamp_id = np.unique(test_data[:,3])
+    unique_timestamp_id = np.unique(test_data[:, 3])
     win_subgraph = {}
     for timestamp_id in unique_timestamp_id:
         subgraph = ra.get_window_edges(data.all_idx, timestamp_id - win_start, learn_edges, window)
         win_subgraph[timestamp_id] = subgraph
 
     return win_subgraph
-
 
 
 def calculate_hours_between_dates_pandas(start_dates, end_dates):
@@ -979,7 +995,7 @@ def calculate_hours_between_dates_pandas(start_dates, end_dates):
     end_series = pd.to_datetime(end_dates)
 
     # 计算小时差
-    difference = (end_series - start_series).astype('timedelta64[h]').astype(int)
+    difference = (end_series - start_series).astype("timedelta64[h]").astype(int)
 
     return difference.tolist()
 
@@ -1009,12 +1025,14 @@ def merge_scores_optimized(dict_A, dict_B, model_weight):
     for key in all_keys:
         score_A = normalized_A.get(key, 0)
         score_B = normalized_B.get(key, 0)
-        merged_scores[key] = (score_A + score_B * model_weight) if key in dict_A and key in dict_B else score_A or (
-                    score_B * model_weight)
+        merged_scores[key] = (
+            (score_A + score_B * model_weight)
+            if key in dict_A and key in dict_B
+            else score_A or (score_B * model_weight)
+        )
 
     # normalized_B = {key: value * model_weight for key, value in normalized_B.items()}
     # merged_scores = {**normalized_B, **normalized_A}
-
 
     return merged_scores
 
@@ -1037,6 +1055,7 @@ def normalize_scores(score_dict):
     score_range = max_score - min_score if max_score != min_score else 1
     return {key: (value - min_score) / score_range for key, value in score_dict.items()}
 
+
 def get_candicates_within_interval(timestamp_id, interval, bkg, return_recent=False):
     min_timestamp_id = timestamp_id - interval
 
@@ -1044,30 +1063,30 @@ def get_candicates_within_interval(timestamp_id, interval, bkg, return_recent=Fa
 
     # 先筛选出时间戳符合条件的条目
     time_filtered = bkg[mask]
-    head_id = time_filtered[:,0]
-    target_id = time_filtered[:,2]
+    head_id = time_filtered[:, 0]
+    target_id = time_filtered[:, 2]
 
     if return_recent is False:
-       return list(set(head_id).union(set(target_id)))
+        return list(set(head_id).union(set(target_id)))
 
     candicates_target_with_timestamp = time_filtered[:, [2, 3]]
     candicates_source_with_timestamp = time_filtered[:, [0, 3]]
     # 合并候选实体数组
-    candicates_with_recent = np.hstack(
-        (candicates_target_with_timestamp[:, 0], candicates_source_with_timestamp[:, 0]))
+    candicates_with_recent = np.hstack((candicates_target_with_timestamp[:, 0], candicates_source_with_timestamp[:, 0]))
     if len(candicates_with_recent) == 0:
         return list(set(head_id).union(set(target_id))), {}
     else:
         # 创建一个包含初始数据的DataFrame
         data = np.vstack((candicates_target_with_timestamp, candicates_source_with_timestamp))
-        df = pd.DataFrame(data, columns=['neighbor', 'timestamp'])
+        df = pd.DataFrame(data, columns=["neighbor", "timestamp"])
 
         # 计算最大值10000 - 第二列的数值 的倒数
-        df['timestamp'] = (1 / (timestamp_id - df['timestamp']))
+        df["timestamp"] = 1 / (timestamp_id - df["timestamp"])
 
         # 使用groupby根据第一列进行分组，并找到每个分组中第二列的最大值
-        result = df.loc[df.groupby('neighbor')['timestamp'].idxmax()].reset_index(drop=True)
-        result_dict = result.set_index('neighbor')['timestamp'].to_dict()
+        result = df.loc[df.groupby("neighbor")["timestamp"].idxmax()].reset_index(drop=True)
+        result_dict = result.set_index("neighbor")["timestamp"].to_dict()
+
 
 def get_candicates_auto(timestamp_id, interval, bkg, return_recent=False):
     min_timestamp_id = timestamp_id - interval
@@ -1076,10 +1095,11 @@ def get_candicates_auto(timestamp_id, interval, bkg, return_recent=False):
 
     # 先筛选出时间戳符合条件的条目
     time_filtered = bkg[mask]
-    target_id = time_filtered[:,2]
+    target_id = time_filtered[:, 2]
 
     if return_recent is False:
-       return list(set(target_id))
+        return list(set(target_id))
+
 
 def clear_folder(folder_path):
     # 确保文件夹存在

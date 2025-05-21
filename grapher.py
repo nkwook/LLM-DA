@@ -48,19 +48,19 @@ class Grapher(object):
             self.test_idx = self.test_idx[mask]
 
         if self.args is not None:
-            if self.args['bgkg'] == 'all':
+            if self.args["bgkg"] == "all":
                 self.all_idx = np.vstack((self.train_idx, self.valid_idx, self.test_idx))
-            elif self.args['bgkg'] == 'train':
+            elif self.args["bgkg"] == "train":
                 self.all_idx = self.train_idx
-            elif self.args['bgkg'] == 'valid':
+            elif self.args["bgkg"] == "valid":
                 self.all_idx = self.valid_idx
-            elif self.args['bgkg'] == 'test':
+            elif self.args["bgkg"] == "test":
                 self.all_idx = self.test_idx
-            elif self.args['bgkg'] == 'train_valid':
+            elif self.args["bgkg"] == "train_valid":
                 self.all_idx = np.vstack((self.train_idx, self.valid_idx))
-            elif self.args['bgkg'] == 'train_test':
+            elif self.args["bgkg"] == "train_test":
                 self.all_idx = np.vstack((self.train_idx, self.test_idx))
-            elif self.args['bgkg'] == 'valid_test':
+            elif self.args["bgkg"] == "valid_test":
                 self.all_idx = np.vstack((self.valid_idx, self.test_idx))
 
         print("Grapher initialized.")

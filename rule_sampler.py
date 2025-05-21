@@ -11,7 +11,7 @@ from temporal_walk import initialize_temporal_walk
 from joblib import Parallel, delayed
 from datetime import datetime
 
-os.environ['CURL_CA_BUNDLE'] = ''
+os.environ["CURL_CA_BUNDLE"] = ""
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from sentence_transformers import SentenceTransformer
@@ -24,27 +24,28 @@ from utils import load_json_data, save_json_data
 def select_similary_relations(relation2id, output_dir):
     id2relation = dict([(v, k) for k, v in relation2id.items()])
 
-    save_json_data(id2relation, os.path.join(output_dir, 'transfomers_id2rel.json'))
-    save_json_data(relation2id, os.path.join(output_dir, 'transfomers_rel2id.json'))
+    save_json_data(id2relation, os.path.join(output_dir, "transfomers_id2rel.json"))
+    save_json_data(relation2id, os.path.join(output_dir, "transfomers_rel2id.json"))
 
     all_rels = list(relation2id.keys())
-    # 加载预训练的模型
-    model = SentenceTransformer('bert-base-nli-mean-tokens')
+    # 사전 훈련된 모델 로드
+    model = SentenceTransformer("bert-base-nli-mean-tokens")
 
-    # 定义句子
+    # 문장 정의
     sentences_A = all_rels
     sentences_B = all_rels
 
-    # 使用模型为句子编码
+    # 모델을 사용하여 문장 인코딩
     embeddings_A = model.encode(sentences_A)
     embeddings_B = model.encode(sentences_B)
 
-    # 计算句子之间的余弦相似度
+    # 문장 간 코사인 유사도 계산
     similarity_matrix = cosine_similarity(embeddings_A, embeddings_B)
 
     np.fill_diagonal(similarity_matrix, 0)
 
-    np.save(os.path.join(output_dir, 'matrix.npy'), similarity_matrix)
+    np.save(os.path.join(output_dir, "matrix.npy"), similarity_matrix)
+
 
 def main(parsed):
     dataset = parsed["dataset"]
@@ -62,26 +63,26 @@ def main(parsed):
     temporal_walk = initialize_temporal_walk(version_id, data, transition_distr)
 
     rl = Rule_Learner(temporal_walk.edges, data.id2relation, data.inv_relation_id, dataset)
-    all_relations = sorted(temporal_walk.edges)  # Learn for all relations
+    all_relations = sorted(temporal_walk.edges)  # 모든 관계에 대해 학습
     all_relations = [int(item) for item in all_relations]
     rel2idx = data.relation2id
 
     select_similary_relations(data.relation2id, rl.output_dir)
 
-    constant_config = load_json_data('./Config/constant.json')
-    relation_regex = constant_config['relation_regex'][dataset]
+    constant_config = load_json_data("./Config/constant.json")
+    relation_regex = constant_config["relation_regex"][dataset]
 
     def learn_rules(i, num_relations, use_relax_time=False):
         """
-        Learn rules with optional relax time (multiprocessing possible).
+        선택적 완화 시간(멀티프로세싱 가능)으로 규칙을 학습합니다.
 
-        Parameters:
-            i (int): process number
-            num_relations (int): minimum number of relations for each process
-            use_relax_time (bool): Whether to use relax time in sampling
+        매개변수:
+            i (int): 프로세스 번호
+            num_relations (int): 각 프로세스에 대한 최소 관계 수
+            use_relax_time (bool): 샘플링 시 완화 시간 사용 여부
 
-        Returns:
-            rl.rules_dict (dict): rules dictionary
+        반환값:
+            rl.rules_dict (dict): 규칙 사전
         """
 
         set_seed_if_provided()
@@ -99,7 +100,8 @@ def main(parsed):
                 num_new_rules = num_rules[-1] - num_rules[-2]
 
                 print(
-                    f"Process {i}: relation {k - relations_idx[0] + 1}/{len(relations_idx)}, length {length}: {it_time} sec, {num_new_rules} rules")
+                    f"Process {i}: relation {k - relations_idx[0] + 1}/{len(relations_idx)}, length {length}: {it_time} sec, {num_new_rules} rules"
+                )
 
         return rl.rules_dict
 
@@ -122,7 +124,7 @@ def main(parsed):
     start = time.time()
     num_relations = len(all_relations) // num_processes
     output = Parallel(n_jobs=num_processes)(
-        delayed(learn_rules)(i, num_relations, parsed['is_relax_time']) for i in range(num_processes)
+        delayed(learn_rules)(i, num_relations, parsed["is_relax_time"]) for i in range(num_processes)
     )
     end = time.time()
     all_graph = output[0]
@@ -130,34 +132,33 @@ def main(parsed):
         all_graph.update(output[i])
 
     total_time = round(end - start, 6)
-    print("Learning finished in {} seconds.".format(total_time))
+    print("학습 완료: {} 초".format(total_time))
 
     rl.rules_dict = all_graph
     rl.sort_rules_dict()
     dt = datetime.now()
     dt = dt.strftime("%d%m%y%H%M%S")
     rl.save_rules(dt, rule_lengths, num_walks, transition_distr, seed)
-    save_json_data(rl.rules_dict, rl.output_dir + 'confidence.json')
+    save_json_data(rl.rules_dict, rl.output_dir + "confidence.json")
     rules_statistics(rl.rules_dict)
     rl.save_rules_verbalized(dt, rule_lengths, num_walks, transition_distr, seed, rel2idx, relation_regex)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='datasets', help='data directory')
+    parser.add_argument("--data_path", type=str, default="datasets", help="데이터 디렉토리")
     parser.add_argument("--dataset", "-d", default="", type=str)
-    parser.add_argument("--max_path_len", "-m", type=int, default=3, help="max sampled path length")
-    parser.add_argument("--anchor", type=int, default=5, help="anchor facts for each relation")
-    parser.add_argument("--output_path", type=str, default="sampled_path", help="output path")
-    parser.add_argument("--sparsity", type=float, default=1, help="dataset sampling sparsity")
-    parser.add_argument("--cores", "-p", type=int, default=5, help="dataset sampling sparsity")
+    parser.add_argument("--max_path_len", "-m", type=int, default=3, help="최대 샘플링된 경로 길이")
+    parser.add_argument("--anchor", type=int, default=5, help="각 관계에 대한 앵커 사실")
+    parser.add_argument("--output_path", type=str, default="sampled_path", help="출력 경로")
+    parser.add_argument("--sparsity", type=float, default=1, help="데이터셋 샘플링 희소성")
+    parser.add_argument("--cores", "-p", type=int, default=5, help="사용할 코어 수")
     parser.add_argument("--num_walks", "-n", default="100", type=int)
     parser.add_argument("--transition_distr", default="exp", type=str)
     parser.add_argument("--seed", "-s", default=None, type=int)
     parser.add_argument("--window", "-w", default=0, type=int)
-    parser.add_argument("--version", default="train", type=str,
-                        choices=['train', 'test', 'train_valid', 'valid'])
-    parser.add_argument("--is_relax_time", default='no', type=str_to_bool)
+    parser.add_argument("--version", default="train", type=str, choices=["train", "test", "train_valid", "valid"])
+    parser.add_argument("--is_relax_time", default="no", type=str_to_bool)
 
     parsed = vars(parser.parse_args())
 

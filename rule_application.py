@@ -5,7 +5,7 @@ import pandas as pd
 from temporal_walk import store_edges
 
 
-def filter_rules(rules_dict, min_conf, min_body_supp, rule_lengths, confidence_type='Common'):
+def filter_rules(rules_dict, min_conf, min_body_supp, rule_lengths, confidence_type="Common"):
     """
     Filter for rules with a minimum confidence, minimum body support, and
     specified rule lengths.
@@ -23,7 +23,7 @@ def filter_rules(rules_dict, min_conf, min_body_supp, rule_lengths, confidence_t
     new_rules_dict = dict()
     sort_rules_dict = dict()
 
-    if confidence_type == 'Common':
+    if confidence_type == "Common":
         for k in rules_dict:
             new_rules_dict[k] = []
             for rule in rules_dict[k]:
@@ -35,19 +35,16 @@ def filter_rules(rules_dict, min_conf, min_body_supp, rule_lengths, confidence_t
                 if cond:
                     new_rules_dict[k].append(rule)
 
-    elif confidence_type == 'LLM':
+    elif confidence_type == "LLM":
         for k in rules_dict:
             new_rules_dict[k] = []
             for rule in rules_dict[k]:
-                cond = (
-                    (rule["llm_confidence"] >= min_conf)
-                    and (len(rule["body_rels"]) in rule_lengths)
-                )
+                cond = (rule["llm_confidence"] >= min_conf) and (len(rule["body_rels"]) in rule_lengths)
                 if cond:
                     new_rules_dict[k].append(rule)
 
     for relation_id, rules in new_rules_dict.items():
-        new_rules = sorted(rules, key=lambda x: x['conf'], reverse=True)
+        new_rules = sorted(rules, key=lambda x: x["conf"], reverse=True)
         sort_rules_dict[relation_id] = new_rules
 
     return new_rules_dict, sort_rules_dict
@@ -72,9 +69,7 @@ def get_window_edges(all_data, test_query_ts, learn_edges, window=-1):
     """
 
     if window > 0:
-        mask = (all_data[:, 3] < test_query_ts) * (
-            all_data[:, 3] >= test_query_ts - window
-        )
+        mask = (all_data[:, 3] < test_query_ts) * (all_data[:, 3] >= test_query_ts - window)
         window_edges = store_edges(all_data[mask])
     elif window == 0:
         mask = all_data[:, 3] < test_query_ts
@@ -103,13 +98,10 @@ def get_window_edges_for_subject_object(all_data, current_ts, subject_object, wi
         window_edges (dict): edges in the window for rule application
     """
 
-    all_mask = (all_data[:, 0] == subject_object[0]) * (
-            all_data[:, 2] == subject_object[1])
+    all_mask = (all_data[:, 0] == subject_object[0]) * (all_data[:, 2] == subject_object[1])
 
     if window > 0:
-        mask = (all_data[:, 3] < current_ts) * (
-            all_data[:, 3] >= current_ts - window
-        )
+        mask = (all_data[:, 3] < current_ts) * (all_data[:, 3] >= current_ts - window)
 
         mask = mask * all_mask
 
@@ -158,6 +150,7 @@ def sample_edges(cur_edges, is_sample=False):
         sampled_edges = cur_edges
 
     return sampled_edges
+
 
 def match_body_relations(rule, edges, test_query, is_sample=False):
     """
@@ -293,9 +286,7 @@ def get_walks(rule, walk_edges, is_relax_time=False):
     for i in range(1, len(df_edges)):
         rule_walks = pd.merge(rule_walks, df_edges[i], on=["entity_" + str(i)])
         if is_relax_time is False:
-            rule_walks = rule_walks[
-                rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]
-            ]
+            rule_walks = rule_walks[rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]]
 
         if not rule["var_constraints"]:
             del rule_walks["entity_" + str(i)]
@@ -305,6 +296,7 @@ def get_walks(rule, walk_edges, is_relax_time=False):
         del rule_walks["timestamp_" + str(i)]
 
     return rule_walks
+
 
 def get_walks_end(rule, walk_edges, is_relax_time=False):
     """
@@ -345,9 +337,7 @@ def get_walks_end(rule, walk_edges, is_relax_time=False):
     for i in range(1, len(df_edges)):
         rule_walks = pd.merge(rule_walks, df_edges[i], on=["entity_" + str(i)])
         if is_relax_time is False:
-            rule_walks = rule_walks[
-                rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]
-            ]
+            rule_walks = rule_walks[rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]]
 
         if not rule["var_constraints"]:
             del rule_walks["entity_" + str(i)]
@@ -400,9 +390,7 @@ def get_walks_complete(rule, walk_edges):
     rule_walks = df_edges[0]
     for i in range(1, len(df_edges)):
         rule_walks = pd.merge(rule_walks, df_edges[i], on=["entity_" + str(i)])
-        rule_walks = rule_walks[
-            rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]
-        ]
+        rule_walks = rule_walks[rule_walks["timestamp_" + str(i - 1)] <= rule_walks["timestamp_" + str(i)]]
 
     return rule_walks
 
@@ -421,17 +409,23 @@ def check_var_constraints(var_constraints, rule_walks):
 
     for const in var_constraints:
         for i in range(len(const) - 1):
-            rule_walks = rule_walks[
-                rule_walks["entity_" + str(const[i])]
-                == rule_walks["entity_" + str(const[i + 1])]
-            ]
+            rule_walks = rule_walks[rule_walks["entity_" + str(const[i])] == rule_walks["entity_" + str(const[i + 1])]]
 
     return rule_walks
 
 
 def get_candidates(
-        rule, rule_walks, test_query_ts, cands_dict, score_func, args, dicts_idx, corre, is_return_timestamp,
-        evaluation_type, timestamp_dict
+    rule,
+    rule_walks,
+    test_query_ts,
+    cands_dict,
+    score_func,
+    args,
+    dicts_idx,
+    corre,
+    is_return_timestamp,
+    evaluation_type,
+    timestamp_dict,
 ):
     """
     Get from the walks that follow the rule the answer candidates.
@@ -456,23 +450,21 @@ def get_candidates(
     for cand in cands:
         cands_walks = rule_walks[rule_walks[max_entity] == cand]
         for s in dicts_idx:
-            score = score_func(rule, cands_walks, test_query_ts, corre, *args[s]).astype(
-                np.float32
-            )
+            score = score_func(rule, cands_walks, test_query_ts, corre, *args[s]).astype(np.float32)
 
             try:
                 cands_dict[s][cand].append(score)
             except KeyError:
                 cands_dict[s][cand] = [score]
 
-            if is_return_timestamp is True and evaluation_type != 'end':
+            if is_return_timestamp is True and evaluation_type != "end":
                 max_cands_ts = max(cands_walks["timestamp_0"])
                 try:
                     timestamp_dict[s][cand].append(max_cands_ts)
                 except KeyError:
                     timestamp_dict[s][cand] = [max_cands_ts]
 
-            if is_return_timestamp is True and evaluation_type == 'end':
+            if is_return_timestamp is True and evaluation_type == "end":
                 max_cands_ts = max(cands_walks[f'timestamp_{len(rule["body_rels"]) - 1}'])
                 try:
                     timestamp_dict[s][cand].append(max_cands_ts)
@@ -482,9 +474,7 @@ def get_candidates(
     return cands_dict, timestamp_dict
 
 
-def save_candidates(
-    rules_file, dir_path, all_candidates, rule_lengths, window, score_func_str, all_timestamp
-):
+def save_candidates(rules_file, dir_path, all_candidates, rule_lengths, window, score_func_str, all_timestamp):
     """
     Save the candidates.
 
@@ -503,9 +493,7 @@ def save_candidates(
     all_candidates = {int(k): v for k, v in all_candidates.items()}
     for k in all_candidates:
         all_candidates[k] = {int(cand): v for cand, v in all_candidates[k].items()}
-    filename = "{0}_cands_r{1}_w{2}_{3}.json".format(
-        rules_file[:-11], rule_lengths, window, score_func_str
-    )
+    filename = "{0}_cands_r{1}_w{2}_{3}.json".format(rules_file[:-11], rule_lengths, window, score_func_str)
     filename = filename.replace(" ", "")
     with open(dir_path + filename, "w", encoding="utf-8") as fout:
         json.dump(all_candidates, fout)
@@ -513,9 +501,7 @@ def save_candidates(
     all_timestamp = {int(k): v for k, v in all_timestamp.items()}
     for k in all_timestamp:
         all_timestamp[k] = {int(cand): v for cand, v in all_timestamp[k].items()}
-    filename = "{0}_cands_r{1}_w{2}_{3}_timestamp.json".format(
-        rules_file[:-11], rule_lengths, window, score_func_str
-    )
+    filename = "{0}_cands_r{1}_w{2}_{3}_timestamp.json".format(rules_file[:-11], rule_lengths, window, score_func_str)
     filename = filename.replace(" ", "")
     with open(dir_path + filename, "w", encoding="utf-8") as fout:
         json.dump(all_timestamp, fout)
