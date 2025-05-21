@@ -69,15 +69,15 @@ def build_prompt_based_low(head, candidate_rels, is_zero, args, prompt_dict):
     return context + low_quality_context, sampled_rules, predict, return_rules
 
 
-def build_prompt_for_unknown(head, candidate_rels, is_zero, args, prompt_dict):
-    # head = clean_symbol_in_rel(head)
-    chain_defination = prompt_dict["chain_defination"].format(head=head)
+# def build_prompt_for_unknown(head, candidate_rels, is_zero, args, prompt_dict): # UNUSED
+#     # head = clean_symbol_in_rel(head)
+#     chain_defination = prompt_dict["chain_defination"].format(head=head)
 
-    context = prompt_dict["unknown_relation_context"].format(head=head)
+#     context = prompt_dict["unknown_relation_context"].format(head=head)
 
-    predict = prompt_dict["unknown_relation_final_predict"].format(head=head)
-    return_rules = prompt_dict["unknown_relation_return"]
-    return chain_defination + context, predict, return_rules
+#     predict = prompt_dict["unknown_relation_final_predict"].format(head=head)
+#     return_rules = prompt_dict["unknown_relation_return"]
+#     return chain_defination + context, predict, return_rules
 
 
 def get_rule_format(head, path, kg_rules_path):
@@ -268,7 +268,17 @@ def extract_and_expand_relations(args, path_content_list, similiary_rel_dict, re
 
 
 def generate_rule_for_iteration_by_multi_thread(
-    row, rdict, rule_path, kg_rules_path, model, args, relation_regex, similiary_rel_dict, kg_rules_path_with_valid
+    row,
+    rdict,
+    rule_path,
+    kg_rules_path,
+    model,
+    args,
+    relation_regex,
+    similiary_rel_dict,
+    kg_rules_path_with_valid,
+    prompt_dict_low,
+    prompt_dict_high,
 ):
     relation2id = rdict.rel2idx
     head = row["head"]
@@ -295,11 +305,11 @@ def generate_rule_for_iteration_by_multi_thread(
     if args.based_rule_type == "low":
         # Build prompt excluding rules
         fixed_context, sampled_rules, predict, return_rules = build_prompt_based_low(
-            head_formate, candidate_rels, args.is_zero, args, prompt_dict
+            head_formate, candidate_rels, args.is_zero, args, prompt_dict_low
         )
     else:
         fixed_context, predict, return_rules = build_prompt_based_high(
-            head_formate, candidate_rels, args.is_zero, args, prompt_dict
+            head_formate, candidate_rels, args.is_zero, args, prompt_dict_high
         )
 
     kg_rules_dict = load_json_data(kg_rules_path)
@@ -347,58 +357,58 @@ def generate_rule_for_iteration_by_multi_thread(
                         fail_rule_file.write(prompt + "\n")
 
 
-def generate_rule_for_unknown_relation_by_multi_thread(
-    row, rdict, rule_path, kg_rules_path, model, args, relation_subgraph, relation_regex, similiary_rel_dict
-):
-    relation2id = rdict.rel2idx
-    head = row
+# def generate_rule_for_unknown_relation_by_multi_thread( # UNUSED
+#     row, rdict, rule_path, kg_rules_path, model, args, relation_subgraph, relation_regex, similiary_rel_dict
+# ):
+#     relation2id = rdict.rel2idx
+#     head = row
 
-    head_id = relation2id[head]
-    # print("Head: ", head)
+#     head_id = relation2id[head]
+#     # print("Head: ", head)
 
-    head_formate = head
-    if args.is_rel_name is True:
-        all_rels = list(relation2id.keys())
-        candidate_rels = ", ".join(all_rels)
-        head_formate = head
-    else:
-        all_rels = list(relation2id.values())
-        str_list = [str(item) for item in all_rels]
-        candidate_rels = ", ".join(str_list)
-        head_formate = head_id
+#     head_formate = head
+#     if args.is_rel_name is True:
+#         all_rels = list(relation2id.keys())
+#         candidate_rels = ", ".join(all_rels)
+#         head_formate = head
+#     else:
+#         all_rels = list(relation2id.values())
+#         str_list = [str(item) for item in all_rels]
+#         candidate_rels = ", ".join(str_list)
+#         head_formate = head_id
 
-    # Build prompt excluding rules
-    fixed_context, predict, return_rules = build_prompt_for_unknown(
-        head_formate, candidate_rels, args.is_zero, args, prompt_dict
-    )
+#     # Build prompt excluding rules
+#     fixed_context, predict, return_rules = build_prompt_for_unknown(
+#         head_formate, candidate_rels, args.is_zero, args, prompt_dict
+#     )
 
-    file_name = head.strip()
-    with (
-        open(os.path.join(rule_path, f"{file_name}.txt"), "w") as rule_file,
-        open(os.path.join(rule_path, f"{file_name}.query"), "w") as query_file,
-    ):
-        rule_file.write(f"Rule_head: {head}\n")
-        for i in range(args.second):
-            # # Convert list elements to the desired string format
-            # formatted_string = ';'.join([f'{name}' for name in condicate])
+#     file_name = head.strip()
+#     with (
+#         open(os.path.join(rule_path, f"{file_name}.txt"), "w") as rule_file,
+#         open(os.path.join(rule_path, f"{file_name}.query"), "w") as query_file,
+#     ):
+#         rule_file.write(f"Rule_head: {head}\n")
+#         for i in range(args.second):
+#             # # Convert list elements to the desired string format
+#             # formatted_string = ';'.join([f'{name}' for name in condicate])
 
-            formatted_string = unknown_check_prompt_length(fixed_context + predict, all_rels, return_rules, model)
+#             formatted_string = unknown_check_prompt_length(fixed_context + predict, all_rels, return_rules, model)
 
-            return_rules = return_rules.format(candidate_rels=formatted_string)
+#             return_rules = return_rules.format(candidate_rels=formatted_string)
 
-            prompt = fixed_context + predict + return_rules
-            # tqdm.write("Prompt: \n{}".format(prompt))
-            query_file.write(f"Sample {i + 1} time: \n")
-            query_file.write(prompt + "\n")
-            if not args.dry_run:
-                response = model.generate_sentence(prompt)
-                if response is not None:
-                    # tqdm.write("Response: \n{}".format(response))
-                    rule_file.write(f"Sample {i + 1} time: \n")
-                    rule_file.write(response + "\n")
-                else:
-                    with open(os.path.join(rule_path, f"fail_{file_name}.txt"), "w") as fail_rule_file:
-                        fail_rule_file.write(prompt + "\n")
+#             prompt = fixed_context + predict + return_rules
+#             # tqdm.write("Prompt: \n{}".format(prompt))
+#             query_file.write(f"Sample {i + 1} time: \n")
+#             query_file.write(prompt + "\n")
+#             if not args.dry_run:
+#                 response = model.generate_sentence(prompt)
+#                 if response is not None:
+#                     # tqdm.write("Response: \n{}".format(response))
+#                     rule_file.write(f"Sample {i + 1} time: \n")
+#                     rule_file.write(response + "\n")
+#                 else:
+#                     with open(os.path.join(rule_path, f"fail_{file_name}.txt"), "w") as fail_rule_file:
+#                         fail_rule_file.write(prompt + "\n")
 
 
 def copy_files(source_dir, destination_dir, file_extension):
@@ -580,8 +590,19 @@ def load_data_and_paths(args):
 
     prompt_path = os.path.join(args.prompt_paths, "common.json")
     prompt_path_for_zero = os.path.join(args.prompt_paths, "zero.json")
+    prompt_path_low = os.path.join(args.prompt_paths, "iteration_low.json")
+    prompt_path_high = os.path.join(args.prompt_paths, "iteration_high.json")
 
-    return dataset, sampled_path, sampled_path_with_valid_dir, sampled_path_dir, prompt_path, prompt_path_for_zero
+    return (
+        dataset,
+        sampled_path,
+        sampled_path_with_valid_dir,
+        sampled_path_dir,
+        prompt_path,
+        prompt_path_for_zero,
+        prompt_path_low,
+        prompt_path_high,
+    )
 
 
 def prepare_rule_heads(dataset, sampled_path):
@@ -629,9 +650,16 @@ def create_directories(args):
 
 
 def main(args, LLM):
-    dataset, sampled_path, sampled_path_with_valid_dir, sampled_path_dir, prompt_path, prompt_path_for_zero = (
-        load_data_and_paths(args)
-    )
+    (
+        dataset,
+        sampled_path,
+        sampled_path_with_valid_dir,
+        sampled_path_dir,
+        prompt_path,
+        prompt_path_for_zero,
+        prompt_path_low,
+        prompt_path_high,
+    ) = load_data_and_paths(args)
     rule_head_without_zero, rule_head_with_zero = prepare_rule_heads(dataset, sampled_path)
     kg_rules_path = determine_kg_rules_path(args, sampled_path_dir)
     rdict, relation_regex, similar_rel_dict = load_configuration(dataset, sampled_path_dir, args)
@@ -639,6 +667,8 @@ def main(args, LLM):
 
     prompt_info_dict = load_json_data(prompt_path)
     prompt_info_zero_dict = load_json_data(prompt_path_for_zero)
+    prompt_dict_low = load_json_data(prompt_path_low)
+    prompt_dict_high = load_json_data(prompt_path_high)
 
     model = LLM(args)
     print("Preparing pipeline for inference...")
@@ -658,6 +688,8 @@ def main(args, LLM):
         rule_head_with_zero,
         prompt_info_dict,
         prompt_info_zero_dict,
+        prompt_dict_low,
+        prompt_dict_high,
     )
 
 
@@ -675,6 +707,8 @@ def llm_rule_generate(
     rule_head_with_zero,
     prompt_info_dict,
     prompt_info_zero_dict,
+    prompt_dict_low,
+    prompt_dict_high,
 ):
     # 규칙 생성
     # TODO: 데이터 있는지 확인하는 함수 만들기
@@ -863,6 +897,8 @@ def llm_rule_generate(
             conf,
             similiary_rel_dict,
             kg_rules_path_with_valid,
+            prompt_dict_low,
+            prompt_dict_high,
         )
         copy_files(iteration_rule_file_path, iteration_only_txt_file_path, "txt")
 
@@ -921,13 +957,25 @@ def llm_rule_generate(
 
 
 def gen_rules_iteration(
-    args, kg_rules_path, model, rdict, relation_regex, rule_path, conf, similiary_rel_dict, kg_rules_path_with_valid
+    args,
+    kg_rules_path,
+    model,
+    rdict,
+    relation_regex,
+    rule_path,
+    conf,
+    similiary_rel_dict,
+    kg_rules_path_with_valid,
+    prompt_dict_low,
+    prompt_dict_high,
 ):
     with ThreadPool(args.n) as p:
         for _ in tqdm(
             p.imap_unordered(
                 partial(
                     generate_rule_for_iteration_by_multi_thread,
+                    prompt_dict_low=prompt_dict_low,
+                    prompt_dict_high=prompt_dict_high,
                     rdict=rdict,
                     rule_path=rule_path,
                     kg_rules_path=kg_rules_path,
@@ -944,28 +992,28 @@ def gen_rules_iteration(
             pass
 
 
-def gen_rules_for_unknown_relation(
-    args, kg_rules_path, model, rdict, relation_regex, relation_subgraph, rule_path, low_conf, similiary_rel_dict
-):
-    with ThreadPool(args.n) as p:
-        for _ in tqdm(
-            p.imap_unordered(
-                partial(
-                    generate_rule_for_unknown_relation_by_multi_thread,
-                    rdict=rdict,
-                    rule_path=rule_path,
-                    kg_rules_path=kg_rules_path,
-                    model=model,
-                    args=args,
-                    relation_subgraph=relation_subgraph,
-                    relation_regex=relation_regex,
-                    similiary_rel_dict=similiary_rel_dict,
-                ),
-                low_conf,
-            ),
-            total=len(low_conf),
-        ):
-            pass
+# def gen_rules_for_unknown_relation( # UNUSED
+#     args, kg_rules_path, model, rdict, relation_regex, relation_subgraph, rule_path, low_conf, similiary_rel_dict
+# ):
+#     with ThreadPool(args.n) as p:
+#         for _ in tqdm(
+#             p.imap_unordered(
+#                 partial(
+#                     generate_rule_for_unknown_relation_by_multi_thread,
+#                     rdict=rdict,
+#                     rule_path=rule_path,
+#                     kg_rules_path=kg_rules_path,
+#                     model=model,
+#                     args=args,
+#                     relation_subgraph=relation_subgraph,
+#                     relation_regex=relation_regex,
+#                     similiary_rel_dict=similiary_rel_dict,
+#                 ),
+#                 low_conf,
+#             ),
+#             total=len(low_conf),
+#         ):
+#             pass
 
 
 def filter_rules_based_confidence(rule_set, min_conf, output_folder, index):
